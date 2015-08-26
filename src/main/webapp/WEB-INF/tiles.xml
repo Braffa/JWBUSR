@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE tiles-definitions PUBLIC
+       "-//Apache Software Foundation//DTD Tiles Configuration 2.0//EN"
+       "http://tiles.apache.org/dtds/tiles-config_2_0.dtd">
+<tiles-definitions>
+	<definition name="base.definition" template="/WEB-INF/jsp/template.jsp">
+		<put-attribute name="title" value="" />
+		<put-attribute name="header" value="/WEB-INF/jsp/snippets/header.jsp" />
+		<put-attribute name="menu" value="/WEB-INF/jsp/snippets/menu.jsp" />
+		<put-attribute name="body" value="" />
+		<put-attribute name="footer" value="/WEB-INF/jsp/snippets/footer.jsp" />
+	</definition>
+
+	<definition name="home" extends="base.definition">
+		<put-attribute name="title" value="Home Page" />
+		<put-attribute name="body" value="/WEB-INF/jsp/home.jsp" />
+	</definition>
+
+	<definition name="loginerror" extends="base.definition">
+		<put-attribute name="title" value="Login Error" />
+		<put-attribute name="body" value="/WEB-INF/jsp/loginerror.jsp" />
+	</definition>
+
+	<definition name="login" extends="base.definition">
+		<put-attribute name="title" value="Login Manager" />
+		<put-attribute name="body" value="/WEB-INF/jsp/login.jsp" />
+	</definition>
+
+	<definition name="register" extends="base.definition">
+		<put-attribute name="title" value="Registration Manager" />
+		<put-attribute name="body" value="/WEB-INF/jsp/register.jsp" />
+	</definition>
+
+	<definition name="registeredUsers" extends="base.definition">
+		<put-attribute name="title" value="Registered Users" />
+		<put-attribute name="body" value="/WEB-INF/jsp/registeredUsers.jsp" />
+	</definition>
+
+	<definition name="whohasthis" extends="base.definition">
+		<put-attribute name="title" value="Who Has This" />
+		<put-attribute name="body" value="/WEB-INF/jsp/whohasthis.jsp" />
+	</definition>
+
+	<definition name="product" extends="base.definition">
+		<put-attribute name="title" value="Product Registration" />
+		<put-attribute name="body" value="/WEB-INF/jsp/product.jsp" />
+	</definition>
+
+	<definition name="searchCatalogue" extends="base.definition">
+		<put-attribute name="title" value="Search Catalogue" />
+		<put-attribute name="body" value="/WEB-INF/jsp/searchCatalogue.jsp" />
+	</definition>
+
+	<definition name="catalog" extends="base.definition">
+		<put-attribute name="title" value="Search Catalogue" />
+		<put-attribute name="body" value="/WEB-INF/jsp/catalog.jsp" />
+	</definition>
+
+</tiles-definitions>
