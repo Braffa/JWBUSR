@@ -418,7 +418,7 @@ public class ProductController {
 				lOfProducts.add(product);
 			}
 			CatalogForm catalogForm = new CatalogForm();
-			catalogForm.setmOfProducts(lOfProducts);
+			//catalogForm.setmOfProducts(lOfProducts);
 			catalogForm.setShowLinks(false);
 			catalogForm.setHeader("Search Results");
 			catalogForm.setOrigin("productLookUp");

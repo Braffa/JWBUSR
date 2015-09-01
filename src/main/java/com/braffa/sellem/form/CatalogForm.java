@@ -2,12 +2,13 @@ package com.braffa.sellem.form;
 
 import java.util.List;
 
+import com.braffa.sellem.model.xml.product.XmlProduct;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Product;
 
 
 public class CatalogForm {
 	
-	private List<Product> lOfProducts;
+	private List<XmlProduct> lOfProducts;
 	
 	private boolean showLinks; 
 	
@@ -17,11 +18,11 @@ public class CatalogForm {
 	
 	private String currentPage;
 
-	public List<Product> getlOfProducts() {
+	public List<XmlProduct> getlOfProducts() {
 		return lOfProducts;
 	}
 
-	public void setmOfProducts(List<Product> lOfProducts) {
+	public void setmOfProducts(List<XmlProduct> lOfProducts) {
 		this.lOfProducts = lOfProducts;
 	}
 

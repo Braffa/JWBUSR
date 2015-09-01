@@ -94,7 +94,7 @@ public class SearchCatalogController {
 		
 		List<Product> lOfProducts = catalog.getProducts().getlOfProducts();
 		CatalogForm catalogForm = new CatalogForm();
-		catalogForm.setmOfProducts(lOfProducts);
+		//catalogForm.setmOfProducts(lOfProducts);
 		catalogForm.setShowLinks(false);
 		catalogForm.setHeader("Search Results");
 		catalogForm.setCurrentPage("searchResults");

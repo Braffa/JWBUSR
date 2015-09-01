@@ -8,6 +8,8 @@ import javax.xml.bind.Unmarshaller;
 
 import com.braffa.sellem.model.xml.authentication.XmlLoginMsg;
 import com.braffa.sellem.model.xml.authentication.XmlRegisteredUserMsg;
+import com.braffa.sellem.model.xml.product.XmlProductMsg;
+import com.braffa.sellem.model.xml.product.XmlUserToProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Register;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUser;
@@ -21,7 +23,7 @@ public class ConvertXMLToObject {
 	public ConvertXMLToObject(String xmlInput) {
 		this.xmlInput = xmlInput;
 	}
-
+	
 	public XmlLoginMsg xmlloginMsgToObjects() {
 		XmlLoginMsg login = null;
 		try {
@@ -49,6 +51,35 @@ public class ConvertXMLToObject {
 		}
 		return registeredUserMsg;
 	}
+	
+	public XmlProductMsg xmlProductMsgToObjects() {
+		XmlProductMsg productMsg = null;
+		try {
+			StringReader reader = new StringReader(xmlInput);
+			JAXBContext jaxbContext = JAXBContext.newInstance(XmlProductMsg.class);
+			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+			productMsg = (XmlProductMsg) jaxbUnmarshaller.unmarshal(reader);
+
+		} catch (JAXBException e) {
+			e.printStackTrace();
+		}
+		return productMsg;
+	}	
+	
+	public XmlUserToProductMsg xmlUserToProductMsgToObjects() {
+		XmlUserToProductMsg userToProductMsg = null;
+		try {
+			StringReader reader = new StringReader(xmlInput);
+			JAXBContext jaxbContext = JAXBContext.newInstance(XmlUserToProductMsg.class);
+			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+			userToProductMsg = (XmlUserToProductMsg) jaxbUnmarshaller.unmarshal(reader);
+
+		} catch (JAXBException e) {
+			e.printStackTrace();
+		}
+		return userToProductMsg;
+	}	
+
 	public Login loginXMLFileToObjects() {
 		Login login = null;
 		try {

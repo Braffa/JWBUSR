@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.braffa.sellem.form.CatalogForm;
+import com.braffa.sellem.model.xml.authentication.XmlLogin;
+import com.braffa.sellem.model.xml.product.XmlProduct;
+import com.braffa.sellem.model.xml.product.XmlProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Catalog;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Product;
@@ -41,14 +44,11 @@ public class CatalogController {
 		ClientConfig config = new DefaultClientConfig();
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
-
-		String xml = service.path("rest").path("catalog")
-				.accept(MediaType.APPLICATION_XML).get(String.class);
-
+		String xml = service.path("rest").path("product").path("findall")
+				.accept(MediaType.TEXT_XML).get(String.class);
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		
-		Catalog catalog = convertXMLToObject.catalogXMLFileToObjects();
-		List<Product> lOfProducts = catalog.getProducts().getlOfProducts();
+		XmlProductMsg productMsg = convertXMLToObject.xmlProductMsgToObjects();
+		List<XmlProduct> lOfProducts = productMsg.getLOfProducts();
 		CatalogForm catalogForm = new CatalogForm();
 		catalogForm.setmOfProducts(lOfProducts);
 		catalogForm.setShowLinks(false);
@@ -63,7 +63,7 @@ public class CatalogController {
 		if (logger.isDebugEnabled()) {
 			logger.debug("");
 		}
-		Login login = (Login)model.get("loggedin");
+		XmlLogin login = (XmlLogin)model.get("loggedin");
 		if (login == null || login.getUserId() == null) {
 			return new ModelAndView("redirect:homepage.html");
 		}
@@ -71,13 +71,11 @@ public class CatalogController {
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
 		
-		String xml = service.path("rest").path("catalog").path(login.getUserId())
-				.accept(MediaType.APPLICATION_XML).get(String.class);
-		
+		String xml = service.path("rest").path("userproduct").path("finduserproducts").path(login.getUserId())
+				.accept(MediaType.TEXT_XML).get(String.class);
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		Catalog catalog = convertXMLToObject.catalogXMLFileToObjects();
-		
-		List<Product> lOfProducts = catalog.getProducts().getlOfProducts();
+		XmlProductMsg productMsg = convertXMLToObject.xmlProductMsgToObjects();
+		List<XmlProduct> lOfProducts = productMsg.getLOfProducts();
 		CatalogForm catalogForm = new CatalogForm();
 		catalogForm.setmOfProducts(lOfProducts);
 		catalogForm.setShowLinks(true);
