@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.SessionAttributes;
 
 import com.braffa.sellem.form.CatalogForm;
 import com.braffa.sellem.form.SearchCatalogForm;
+import com.braffa.sellem.model.xml.product.XmlProduct;
+import com.braffa.sellem.model.xml.product.XmlProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Catalog;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Product;
 
@@ -81,20 +83,23 @@ public class SearchCatalogController {
 			searchField = "title";
 			searchValue = searchForm.getTitle();
 		}
+		if (logger.isDebugEnabled()) {
+			logger.debug("searchField " + searchField + " searchValue " + searchValue);
+		}
 		
 		ClientConfig config = new DefaultClientConfig();
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
 		
-		String xml = service.path("rest").path("catalog").path(searchValue).path(searchField)
-				.accept(MediaType.APPLICATION_XML).get(String.class);
-		
+		String xml = service.path("rest").path("product").path("searchProduct").path(searchField).path(searchValue)
+				.accept(MediaType.TEXT_XML).get(String.class);
+
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		Catalog catalog = convertXMLToObject.catalogXMLFileToObjects();
+		XmlProductMsg productMsg = convertXMLToObject.xmlProductMsgToObjects();
+		List<XmlProduct> lOfProducts = productMsg.getLOfProducts();
 		
-		List<Product> lOfProducts = catalog.getProducts().getlOfProducts();
 		CatalogForm catalogForm = new CatalogForm();
-		//catalogForm.setmOfProducts(lOfProducts);
+		catalogForm.setmOfProducts(lOfProducts);
 		catalogForm.setShowLinks(false);
 		catalogForm.setHeader("Search Results");
 		catalogForm.setCurrentPage("searchResults");
