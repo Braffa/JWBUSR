@@ -23,10 +23,16 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.braffa.productlookup.amazon.ProductLookUp;
 import com.braffa.sellem.form.CatalogForm;
 import com.braffa.sellem.form.ProductForm;
 import com.braffa.sellem.form.RegisteredUserToProduct;
 import com.braffa.sellem.form.WhoHasThisForm;
+import com.braffa.sellem.model.xml.authentication.XmlLogin;
+import com.braffa.sellem.model.xml.product.XmlProduct;
+import com.braffa.sellem.model.xml.product.XmlProductMsg;
+import com.braffa.sellem.model.xml.product.XmlUserToProduct;
+import com.braffa.sellem.model.xml.product.XmlUserToProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUser;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUsers;
@@ -36,10 +42,6 @@ import com.braffa.sellem.model.xml.webserviceobjects.product.ProductToUser;
 import com.braffa.sellem.model.xml.webserviceobjects.product.ProductToUsers;
 import com.braffa.sellem.model.xml.webserviceobjects.product.UserToCatalog;
 import com.braffa.sellem.model.xml.webserviceobjects.product.UserToCatalogs;
-
-import com.braffa.productlookup.amazon.ProductLookUp;
-
-import com.braffa.sellem.xml.parser.ConvertObjectToXML;
 import com.braffa.sellem.xml.parser.ConvertXMLToObject;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -79,7 +81,7 @@ public class ProductController {
 		if (logger.isDebugEnabled()) {
 			logger.debug(productid);
 		}
-		Login login = (Login) model.get("loggedin");
+		XmlLogin login = (XmlLogin) model.get("loggedin");
 		if (login == null || login.getUserId() == null) {
 			return new ModelAndView("redirect:homepage.html");
 		}
@@ -113,7 +115,7 @@ public class ProductController {
 		if (logger.isDebugEnabled()) {
 			logger.debug("saveNewProduct " + productid);
 		}
-		Login login = (Login) model.get("loggedin");
+		XmlLogin login = (XmlLogin) model.get("loggedin");
 		if (login == null || login.getUserId() == null) {
 			return new ModelAndView("redirect:homepage.html");
 		}
@@ -163,7 +165,7 @@ public class ProductController {
 		if (logger.isDebugEnabled()) {
 			logger.debug("addNewProduct");
 		}
-		Login login = (Login) model.get("loggedin");
+		XmlLogin login = (XmlLogin) model.get("loggedin");
 		///if (login == null || login.getUserId() == null) {
 		//	return new ModelAndView("redirect:homepage.html");
 		//}
@@ -182,7 +184,7 @@ public class ProductController {
 		if (logger.isDebugEnabled()) {
 			logger.debug(productid);
 		}
-		Login login = (Login) model.get("loggedin");
+		XmlLogin login = (XmlLogin) model.get("loggedin");
 		ClientConfig config = new DefaultClientConfig();
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
@@ -299,29 +301,49 @@ public class ProductController {
 		if (newProductForm.getAction().equals("ISBN")) {
 			return productLookUp(newProductForm, model);
 		}
+
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		XmlProduct xmlProduct = new XmlProduct();
+		
+		xmlProduct.setAuthor(newProductForm.getAuthor());
+		xmlProduct.setImageURL(newProductForm.getImageURL());
+		xmlProduct.setImageLargeURL(newProductForm.getImageLargeURL());
+		xmlProduct.setManufacturer(newProductForm.getManufacturer());
+		xmlProduct.setProductgroup(newProductForm.getProductgroup());
+		xmlProduct.setProductid(newProductForm.getProductid());
+		xmlProduct.setProductIndex(newProductForm.getProductIndex());
+		xmlProduct.setProductidtype(newProductForm.getProductidtype());
+		xmlProduct.setSource(newProductForm.getSource());
+		xmlProduct.setSource(newProductForm.getSourceid());
+		xmlProduct.setTitle(newProductForm.getTitle());
+		xmlProduct.setUserId(login.getUserId());
+		xmlProduct.setAction(newProductForm.getAction());
+		XmlProductMsg xmlProductMsg = new XmlProductMsg(xmlProduct);
+		
 		ClientConfig config = new DefaultClientConfig();
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
-
-		Login login = (Login) model.get("loggedin");
-		Product product = new Product(newProductForm.getAuthor(),
-				newProductForm.getImageURL(),
-				newProductForm.getImageLargeURL(),
-				newProductForm.getManufacturer(),
-				newProductForm.getProductIndex(),
-				newProductForm.getProductgroup(),
-				newProductForm.getProductid(),
-				newProductForm.getProductidtype(), newProductForm.getSource(),
-				newProductForm.getSourceid(), newProductForm.getTitle(),
-				login.getUserId());
-		product.setAction(newProductForm.getAction());
-
-		ClientResponse response = service.path("rest").path("catalog")
-				.path(product.getProductid()).accept(MediaType.APPLICATION_XML)
-				.put(ClientResponse.class, product);
-
-		if (logger.isDebugEnabled()) {
-			logger.debug(response.getStatus());
+		WebResource createService = service.path("rest").path("product").path("create");
+		ClientResponse response = createService.accept(
+				MediaType.APPLICATION_XML).post(ClientResponse.class,
+				xmlProductMsg);
+		if (response.getStatus() == 200) {
+			XmlUserToProduct userToProduct = new XmlUserToProduct ();
+			userToProduct.setUserId(xmlProduct.getUserId());
+			userToProduct.setProductId(xmlProduct.getProductid());
+			userToProduct.setProductIndex(Integer.parseInt(xmlProduct.getProductIndex()));
+			XmlUserToProductMsg userToProductMsg = new XmlUserToProductMsg(userToProduct);
+			
+			ClientConfig userToProductconfig = new DefaultClientConfig();
+			Client userToProductClient = Client.create(userToProductconfig);
+			WebResource userToProductService = userToProductClient.resource(getBaseURI());
+			WebResource usertoproductCreateService = userToProductService.path("rest").path("usertoproduct").path("create");
+			ClientResponse usertoproductresponse = usertoproductCreateService.accept(
+					MediaType.APPLICATION_XML).post(ClientResponse.class, 
+							userToProductMsg);
+			if (logger.isDebugEnabled()) {
+				logger.debug(usertoproductresponse.getStatus());
+			}
 		}
 		return new ModelAndView("redirect:myCatalog.html");
 	}

@@ -21,6 +21,9 @@ import org.springframework.web.servlet.ModelAndView;
 
 import com.braffa.sellem.form.RegisterForm;
 import com.braffa.sellem.form.RegistrationForm;
+import com.braffa.sellem.model.xml.authentication.XmlLogin;
+import com.braffa.sellem.model.xml.authentication.XmlRegisteredUser;
+import com.braffa.sellem.model.xml.authentication.XmlRegisteredUserMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Register;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUser;
@@ -113,7 +116,7 @@ public class ReistrationController {
 		if (logger.isDebugEnabled()) {
 			logger.debug("showRegisteredUsers");
 		}
-		Login login = (Login)model.get("loggedin");
+		XmlLogin login = (XmlLogin)model.get("loggedin");
 		if (login == null || login.getUserId() == null) {
 			return new ModelAndView("redirect:homepage.html");
 		}
@@ -121,17 +124,16 @@ public class ReistrationController {
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
 
-		String xml = service.path("rest").path("registeredusers")
-				.accept(MediaType.APPLICATION_XML).get(String.class);
-
+		String xml = service.path("rest").path("registeredusers").path("findall")
+				.accept(MediaType.TEXT_XML).get(String.class);
+		
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		Register register = convertXMLToObject
-				.registeredUsersXMLFileToObjects();
-
-		List<RegisteredUser> lOfRegisteredUser = register.getRegisteredUsers()
-				.getlOfRegisteredUser();
+		XmlRegisteredUserMsg registeredUserMsg = convertXMLToObject
+				.xmlRegisteredUserMsgToObjects();
+		List<XmlRegisteredUser> lOfRegisteredUser = registeredUserMsg
+				.getLOfRegisteredUsers();
 		List<RegisterForm> lOfRegisteredDetails = new ArrayList<RegisterForm>();
-		for (RegisteredUser registeredUser : lOfRegisteredUser) {
+		for (XmlRegisteredUser registeredUser : lOfRegisteredUser) {
 			RegisterForm registerForm = new RegisterForm(
 					registeredUser.getEmail(), registeredUser.getFirstname(),
 					registeredUser.getLastname(), registeredUser.getLogin()
