@@ -24,10 +24,7 @@
 				<p title="${product.title}"><c:out value="${product.title}"/></p>
 				<p title="${product.productid}"><c:out value="${product.productid}"/></p>
 			</div>
-			<div class="product_options">
-			<c:if test="${loggedin.authorityLevel == '99'}">
-				<p><a href="updateProduct.html?productid=${product.productid}&productIndex=${product.productIndex}">Edit</a></p>
-			</c:if>			
+			<div class="product_options">		
 			<c:choose>
 				<c:when test="${catalogForm.showLinks == true && loggedin.authorityLevel != null}">
 					<p><a href="deleteProduct.html?productid=${product.productid}&productIndex=${product.productIndex}">Delete</a></p>

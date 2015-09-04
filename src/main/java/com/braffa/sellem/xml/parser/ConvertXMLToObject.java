@@ -10,6 +10,7 @@ import com.braffa.sellem.model.xml.authentication.XmlLoginMsg;
 import com.braffa.sellem.model.xml.authentication.XmlRegisteredUserMsg;
 import com.braffa.sellem.model.xml.product.XmlProductMsg;
 import com.braffa.sellem.model.xml.product.XmlUserToProductMsg;
+import com.braffa.sellem.model.xml.product.XmlUsersProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Register;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUser;
@@ -36,6 +37,20 @@ public class ConvertXMLToObject {
 			e.printStackTrace();
 		}
 		return login;
+	}
+	
+	public XmlUsersProductMsg xmlUsersProductMsgToObjects () {
+		try {
+			StringReader reader = new StringReader(xmlInput);
+			JAXBContext jaxbContext = JAXBContext
+					.newInstance(XmlUsersProductMsg.class);
+			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+			XmlUsersProductMsg xmlUsersProductMsg = (XmlUsersProductMsg) jaxbUnmarshaller.unmarshal(reader);
+			return xmlUsersProductMsg;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 	
 	public XmlRegisteredUserMsg xmlRegisteredUserMsgToObjects() {

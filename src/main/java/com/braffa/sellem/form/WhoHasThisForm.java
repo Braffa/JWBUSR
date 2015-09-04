@@ -2,11 +2,12 @@ package com.braffa.sellem.form;
 
 import java.util.List;
 
+import com.braffa.sellem.model.xml.product.XmlProduct;
 import com.braffa.sellem.model.xml.webserviceobjects.product.Product;
 
 public class WhoHasThisForm {
 
-	private Product product;
+	private XmlProduct product;
 
 	private List<RegisteredUserToProduct> lOfRegisteredUserToProduct;
 
@@ -18,11 +19,11 @@ public class WhoHasThisForm {
 
 	private String currentPage;
 
-	public Product getProduct() {
+	public XmlProduct getProduct() {
 		return product;
 	}
 
-	public void setProduct(Product product) {
+	public void setProduct(XmlProduct product) {
 		this.product = product;
 	}
 

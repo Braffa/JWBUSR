@@ -29,10 +29,14 @@ import com.braffa.sellem.form.ProductForm;
 import com.braffa.sellem.form.RegisteredUserToProduct;
 import com.braffa.sellem.form.WhoHasThisForm;
 import com.braffa.sellem.model.xml.authentication.XmlLogin;
+import com.braffa.sellem.model.xml.authentication.XmlRegisteredUser;
+import com.braffa.sellem.model.xml.authentication.XmlRegisteredUserMsg;
 import com.braffa.sellem.model.xml.product.XmlProduct;
 import com.braffa.sellem.model.xml.product.XmlProductMsg;
 import com.braffa.sellem.model.xml.product.XmlUserToProduct;
 import com.braffa.sellem.model.xml.product.XmlUserToProductMsg;
+import com.braffa.sellem.model.xml.product.XmlUsersLinkedToProduct;
+import com.braffa.sellem.model.xml.product.XmlUsersProductMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUser;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.RegisteredUsers;
@@ -75,236 +79,75 @@ public class ProductController {
 	public static final String KEY_IMAGE_HEIGHT = "Height";
 	public static final String KEY_IMAGE_WIDTH = "Width";
 
-	@RequestMapping(value = "/addExistingProduct", method = RequestMethod.GET)
-	public ModelAndView addExistingProduct(@RequestParam String productid,
-			Map<String, Object> model) {
+	private int addProduct(XmlProductMsg xmlProductMsg) {
 		if (logger.isDebugEnabled()) {
-			logger.debug(productid);
-		}
-		XmlLogin login = (XmlLogin) model.get("loggedin");
-		if (login == null || login.getUserId() == null) {
-			return new ModelAndView("redirect:homepage.html");
+			logger.debug("addProduct");
 		}
 		ClientConfig config = new DefaultClientConfig();
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
+		WebResource createService = service.path("rest").path("product")
+				.path("create");
+		ClientResponse response = createService.accept(
+				MediaType.APPLICATION_XML).post(ClientResponse.class,
+				xmlProductMsg);
+		return response.getStatus();
+	}
 
-		String xml = service.path("rest").path("catalog").path(productid)
-				.path("productFullId").accept(MediaType.APPLICATION_XML)
-				.get(String.class);
+	private int processUserToProduct(String productid, String userId,
+			String action) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("processUserToProduct " + productid + " " + userId
+					+ " " + action);
+		}
+		XmlUserToProduct userToProduct = new XmlUserToProduct();
+		userToProduct.setUserId(userId);
+		userToProduct.setProductId(productid);
+		userToProduct.setProductIndex(0);
+		XmlUserToProductMsg userToProductMsg = new XmlUserToProductMsg(
+				userToProduct);
+		ClientConfig userToProductconfig = new DefaultClientConfig();
+		Client userToProductClient = Client.create(userToProductconfig);
+		WebResource userToProductService = userToProductClient
+				.resource(getBaseURI());
+		WebResource usertoproductCreateService = userToProductService
+				.path("rest").path("usertoproduct").path(action);
+		ClientResponse usertoproductresponse = usertoproductCreateService
+				.accept(MediaType.APPLICATION_XML).post(ClientResponse.class,
+						userToProductMsg);
+		if (logger.isDebugEnabled()) {
+			logger.debug(usertoproductresponse.getStatus());
+		}
+		return usertoproductresponse.getStatus();
+	}
 
-		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		Catalog catalog = convertXMLToObject.catalogXMLFileToObjects();
-
-		Product product = catalog.getProducts().getlOfProducts().get(0);
-		product.setUserId(login.getUserId());
-		product.setAction("addExistingProduct");
-		ClientResponse response = service.path("rest").path("catalog")
-				.path(productid).accept(MediaType.APPLICATION_XML)
-				.put(ClientResponse.class, product);
-
+	private int deleteToProduct(String productid, String userId) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("processUserToProduct " + productid + " " + userId);
+		}
+		ClientConfig config = new DefaultClientConfig();
+		Client client = Client.create(config);
+		WebResource webResource = client.resource(getBaseURI());
+		ClientResponse response = webResource.path("rest")
+				.path("usertoproduct").path("delete").path(userId)
+				.path(productid).path("0").delete(ClientResponse.class);
 		if (logger.isDebugEnabled()) {
 			logger.debug(response.getStatus());
 		}
-		return new ModelAndView("redirect:myCatalog.html");
-	}
-	
-	@RequestMapping(value = "/saveNewProduct", method = RequestMethod.GET)
-	public ModelAndView saveNewProduct(@RequestParam String productid,
-			Map<String, Object> model) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("saveNewProduct " + productid);
-		}
-		XmlLogin login = (XmlLogin) model.get("loggedin");
-		if (login == null || login.getUserId() == null) {
-			return new ModelAndView("redirect:homepage.html");
-		}
-		
-		String barcodeFormat = "EAN";
-		Document document = ProductLookUp.getProductsWithImage(
-				productid, barcodeFormat, null, null,
-				"All", "ThumbnailImage");
-		List<Product> lOfProducts = new ArrayList<Product>();
-		NodeList productList = document.getElementsByTagName("product");
-		for (int i = 0; i < productList.getLength(); i++) {
-			Element element = (Element) productList.item(i);
-			Product product = new Product();
-			product.setAuthor(getValue(element, KEY_AUTHOR));
-			product.setImageLargeURL(getValue(element, KEY_URL));
-			product.setImageURL(getValue(element, KEY_URL));
-			product.setProductgroup(getValue(element, KEY_PRODUCT_GROUP));
-			product.setManufacturer(KEY_MANUFACTURER);
-			product.setProductid(getValue(element, KEY_PRODUCT_ID));
-			product.setProductidtype(getValue(element, KEY_PRODUCT_ID_TYPE));
-			product.setSource(getValue(element, KEY_SOURCE));
-			product.setSourceid(getValue(element, KEY_SOURCE_ID));
-			product.setTitle(getValue(element, KEY_SOURCE_TITLE));
-			product.setUserId(login.getUserId());
-			lOfProducts.add(product);
-		}
-		
-		ClientConfig config = new DefaultClientConfig();
-		Client client = Client.create(config);
-		WebResource service = client.resource(getBaseURI());
-
-		//product.setAction(newProductForm.getAction());
-
-		ClientResponse response = service.path("rest").path("catalog")
-				.path(productid).accept(MediaType.APPLICATION_XML)
-				.put(ClientResponse.class, lOfProducts.get(0));
-
-		if (logger.isDebugEnabled()) {
-			logger.debug(response.getStatus());
-		}
-		
-		return new ModelAndView("redirect:myCatalog.html");
-	}
-
-	@RequestMapping("/addNewProduct")
-	public Object addNewProduct(Map<String, Object> model) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("addNewProduct");
-		}
-		XmlLogin login = (XmlLogin) model.get("loggedin");
-		///if (login == null || login.getUserId() == null) {
-		//	return new ModelAndView("redirect:homepage.html");
-		//}
-		ProductForm productForm = new ProductForm();
-		productForm = setUpDummyProductform();
-		productForm.setAction("new");
-		productForm.setCurrentPage("newProduct");
-		model.put("productForm", productForm);
-		return "product";
-	}
-
-	@RequestMapping(value = "/deleteProduct", method = RequestMethod.GET)
-	public ModelAndView deleteProduct(@Valid ProductForm newProductForm,
-			@RequestParam String productid, @RequestParam String productIndex,
-			BindingResult result, Map<String, Object> model) {
-		if (logger.isDebugEnabled()) {
-			logger.debug(productid);
-		}
-		XmlLogin login = (XmlLogin) model.get("loggedin");
-		ClientConfig config = new DefaultClientConfig();
-		Client client = Client.create(config);
-		WebResource service = client.resource(getBaseURI());
-		Product product = new Product();
-		product.setProductid(productid);
-		product.setProductIndex(productIndex);
-		product.setUserId(login.getUserId());
-		product.setAction("delete");
-		ClientResponse response = service.path("rest").path("catalog")
-				.path(productid).accept(MediaType.APPLICATION_XML)
-				.put(ClientResponse.class, product);
-
-		if (logger.isDebugEnabled()) {
-			logger.debug(response.getStatus());
-		}
-		return new ModelAndView("redirect:myCatalog.html");
-	}
-
-	@RequestMapping(value = "/getProductUserDetails", method = RequestMethod.GET)
-	public Object getProductUserDetails(Map<String, Object> model,
-			@RequestParam String productid) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("productid " + productid);
-		}
-		ClientConfig config = new DefaultClientConfig();
-		Client client = Client.create(config);
-		WebResource service = client.resource(getBaseURI());
-
-		String xml = service.path("rest").path("producttousers")
-				.path(productid).accept(MediaType.APPLICATION_XML)
-				.get(String.class);
-
-		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		ProductToUsers productToUsers = convertXMLToObject
-				.productToUsersXMLFileToObjects();
-		List<ProductToUser> lOfProductToUser = productToUsers
-				.getlOfProductToUser();
-		WhoHasThisForm whoHasThisForm = new WhoHasThisForm();
-		for (ProductToUser productToUser : lOfProductToUser) {
-			Product product = productToUser.getProduct();
-			whoHasThisForm.setProduct(product);
-			UserToCatalogs userToCatalogs = productToUser.getUserToCatalogs();
-			RegisteredUsers registeredUsers = productToUser
-					.getRegisteredUsers();
-			List<RegisteredUserToProduct> lOfRegisteredUserToProduct = setUpLOfRegisteredUserToProduct(userToCatalogs, registeredUsers);
-			whoHasThisForm.setlOfRegisteredUserToProduct(lOfRegisteredUserToProduct);
-		}
-
-		whoHasThisForm.setShowLinks(false);
-		whoHasThisForm.setHeader("Who Has This");
-		whoHasThisForm.setCurrentPage("whoHasThis");
-		model.put("whoHasThisForm", whoHasThisForm);
-		return "whohasthis";
-	}
-
-	private List<RegisteredUserToProduct> setUpLOfRegisteredUserToProduct(
-			UserToCatalogs userToCatalogs, RegisteredUsers registeredUsers) {
-		Map<String, RegisteredUserToProduct> mOfRegisteredUserToProduct = new HashMap<String, RegisteredUserToProduct>();
-		List<UserToCatalog> lOfUserToCatalog = userToCatalogs
-				.getlOfUserToCatalog();
-		for (UserToCatalog userToCatalog : lOfUserToCatalog) {
-			if (mOfRegisteredUserToProduct.containsKey(userToCatalog
-					.getUserId())) {
-
-			} else {
-				if (logger.isDebugEnabled()) {
-					logger.debug("userToCatalog.getUserId() " + userToCatalog.getUserId());
-				}
-				RegisteredUserToProduct registeredUserToProduct = new RegisteredUserToProduct();
-				registeredUserToProduct.setUserId(userToCatalog.getUserId());
-				registeredUserToProduct.setCrDate(userToCatalog.getCrDate());
-				registeredUserToProduct.setProductId(userToCatalog
-						.getProductId());
-				registeredUserToProduct.setProductIndex(userToCatalog
-						.getProductIndex());
-				mOfRegisteredUserToProduct.put(userToCatalog.getUserId(),
-						registeredUserToProduct);
-			}
-		}
-		List<RegisteredUser> lOfRegisteredUser = registeredUsers
-				.getlOfRegisteredUser();
-		for (RegisteredUser registeredUser : lOfRegisteredUser) {
-			if (logger.isDebugEnabled()) {
-				logger.debug("registeredUser.getUserId() " + registeredUser.getLogin().getUserId());
-				logger.debug("registeredUser.getEmail() " + registeredUser.getEmail());
-			}
-			
-			if (mOfRegisteredUserToProduct.containsKey(registeredUser
-					.getLogin().getUserId())) {
-				RegisteredUserToProduct registeredUserToProduct = mOfRegisteredUserToProduct
-						.get(registeredUser.getLogin().getUserId());
-				registeredUserToProduct.setEmail(registeredUser.getEmail());
-				mOfRegisteredUserToProduct.put(
-						registeredUserToProduct.getUserId(),
-						registeredUserToProduct);
-			} else {
-
-			}
-		}
-		List<RegisteredUserToProduct> lOfRegisteredUserToProduct = new ArrayList<RegisteredUserToProduct>();
-		for (RegisteredUserToProduct registeredUserToProduct : mOfRegisteredUserToProduct
-				.values()) {
-			lOfRegisteredUserToProduct.add(registeredUserToProduct);
-		}
-		return lOfRegisteredUserToProduct;
+		return response.getStatus();
 	}
 
 	@RequestMapping(value = "/saveProduct", method = RequestMethod.POST)
 	public Object saveProduct(@Valid ProductForm newProductForm,
 			BindingResult result, Map<String, Object> model) {
 		if (logger.isDebugEnabled()) {
-			logger.debug(newProductForm.getProductid());
+			logger.debug("saveProduct " + newProductForm.getProductid());
 		}
 		if (newProductForm.getAction().equals("ISBN")) {
 			return productLookUp(newProductForm, model);
 		}
-
 		XmlLogin login = (XmlLogin) model.get("loggedin");
 		XmlProduct xmlProduct = new XmlProduct();
-		
 		xmlProduct.setAuthor(newProductForm.getAuthor());
 		xmlProduct.setImageURL(newProductForm.getImageURL());
 		xmlProduct.setImageLargeURL(newProductForm.getImageLargeURL());
@@ -319,34 +162,142 @@ public class ProductController {
 		xmlProduct.setUserId(login.getUserId());
 		xmlProduct.setAction(newProductForm.getAction());
 		XmlProductMsg xmlProductMsg = new XmlProductMsg(xmlProduct);
-		
-		ClientConfig config = new DefaultClientConfig();
-		Client client = Client.create(config);
-		WebResource service = client.resource(getBaseURI());
-		WebResource createService = service.path("rest").path("product").path("create");
-		ClientResponse response = createService.accept(
-				MediaType.APPLICATION_XML).post(ClientResponse.class,
-				xmlProductMsg);
-		if (response.getStatus() == 200) {
-			XmlUserToProduct userToProduct = new XmlUserToProduct ();
-			userToProduct.setUserId(xmlProduct.getUserId());
-			userToProduct.setProductId(xmlProduct.getProductid());
-			userToProduct.setProductIndex(Integer.parseInt(xmlProduct.getProductIndex()));
-			XmlUserToProductMsg userToProductMsg = new XmlUserToProductMsg(userToProduct);
-			
-			ClientConfig userToProductconfig = new DefaultClientConfig();
-			Client userToProductClient = Client.create(userToProductconfig);
-			WebResource userToProductService = userToProductClient.resource(getBaseURI());
-			WebResource usertoproductCreateService = userToProductService.path("rest").path("usertoproduct").path("create");
-			ClientResponse usertoproductresponse = usertoproductCreateService.accept(
-					MediaType.APPLICATION_XML).post(ClientResponse.class, 
-							userToProductMsg);
-			if (logger.isDebugEnabled()) {
-				logger.debug(usertoproductresponse.getStatus());
-			}
+		int status = addProduct(xmlProductMsg);
+		if (status == 200) {
+			processUserToProduct(newProductForm.getProductid(),
+					login.getUserId(), "create");
 		}
 		return new ModelAndView("redirect:myCatalog.html");
 	}
+
+	@RequestMapping(value = "/addExistingProduct", method = RequestMethod.GET)
+	public ModelAndView addExistingProduct(@RequestParam String productid,
+			Map<String, Object> model) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("addExistingProduct " + productid);
+		}
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		if (login == null || login.getUserId() == null) {
+			return new ModelAndView("redirect:homepage.html");
+		}
+		processUserToProduct(productid, login.getUserId(), "create");
+		return new ModelAndView("redirect:myCatalog.html");
+	}
+
+	@RequestMapping(value = "/deleteProduct", method = RequestMethod.GET)
+	public ModelAndView deleteProduct(@Valid ProductForm newProductForm,
+			@RequestParam String productid, @RequestParam String productIndex,
+			BindingResult result, Map<String, Object> model) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("deleteProduct" + productid + " " + productIndex);
+		}
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		deleteToProduct(productid, login.getUserId());
+		return new ModelAndView("redirect:myCatalog.html");
+	}
+
+	@RequestMapping(value = "/getProductUserDetails", method = RequestMethod.GET)
+	public Object getProductUserDetails(Map<String, Object> model,
+			@RequestParam String productid) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("getProductUserDetails productid " + productid);
+		}
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		ClientConfig config = new DefaultClientConfig();
+		Client client = Client.create(config);
+		WebResource service = client.resource(getBaseURI());
+		String xmlStr = service.path("rest").path("userproduct")
+				.path("findusersbyproductid").path(productid)
+				.accept(MediaType.TEXT_XML).get(String.class);
+		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xmlStr);
+		XmlUsersProductMsg xmlUsersProductMsg = convertXMLToObject
+				.xmlUsersProductMsgToObjects();
+
+		XmlProduct product = xmlUsersProductMsg.getProduct();
+
+		List<XmlUsersLinkedToProduct> lOfXmlUsersLinkedToProduct = xmlUsersProductMsg
+				.getlOfXmlUsersLinkedToProduct();
+
+		WhoHasThisForm whoHasThisForm = new WhoHasThisForm();
+		List<RegisteredUserToProduct> lOfRegisteredUserToProduct = new ArrayList<RegisteredUserToProduct>();
+		for (XmlUsersLinkedToProduct usersLinkedToProduct : lOfXmlUsersLinkedToProduct) {
+			RegisteredUserToProduct registeredUserToProduct = new RegisteredUserToProduct();
+			registeredUserToProduct.setCrDate(usersLinkedToProduct
+					.getAddedDate());
+			registeredUserToProduct.setEmail(usersLinkedToProduct.getEmail());
+			registeredUserToProduct.setUserId(usersLinkedToProduct.getUserId());
+			registeredUserToProduct.setProductId(product.getProductid());
+			registeredUserToProduct.setProductIndex("0");
+			lOfRegisteredUserToProduct.add(registeredUserToProduct);
+		}
+		whoHasThisForm
+				.setlOfRegisteredUserToProduct(lOfRegisteredUserToProduct);
+		whoHasThisForm.setProduct(product);
+		whoHasThisForm.setShowLinks(false);
+		whoHasThisForm.setHeader("Who Has This");
+		whoHasThisForm.setCurrentPage("whoHasThis");
+		model.put("whoHasThisForm", whoHasThisForm);
+		return "whohasthis";
+	}
+
+	@RequestMapping(value = "/saveNewProduct", method = RequestMethod.GET)
+	public ModelAndView saveNewProduct(@RequestParam String productid,
+			Map<String, Object> model) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("saveNewProduct " + productid);
+		}
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		if (login == null || login.getUserId() == null) {
+			return new ModelAndView("redirect:homepage.html");
+		}
+		String barcodeFormat = "EAN";
+		Document document = ProductLookUp.getProductsWithImage(productid,
+				barcodeFormat, null, null, "All", "ThumbnailImage");
+		List<XmlProduct> lOfProducts = new ArrayList<XmlProduct>();
+		NodeList productList = document.getElementsByTagName("product");
+		for (int i = 0; i < productList.getLength(); i++) {
+			Element element = (Element) productList.item(i);
+			XmlProduct product = new XmlProduct();
+			product.setAuthor(getValue(element, KEY_AUTHOR));
+			product.setImageLargeURL(getValue(element, KEY_URL));
+			product.setImageURL(getValue(element, KEY_URL));
+			product.setProductgroup(getValue(element, KEY_PRODUCT_GROUP));
+			product.setManufacturer(KEY_MANUFACTURER);
+			product.setProductid(getValue(element, KEY_PRODUCT_ID));
+			product.setProductidtype(getValue(element, KEY_PRODUCT_ID_TYPE));
+			product.setSource(getValue(element, KEY_SOURCE));
+			product.setSourceid(getValue(element, KEY_SOURCE_ID));
+			product.setTitle(getValue(element, KEY_SOURCE_TITLE));
+			product.setUserId(login.getUserId());
+			lOfProducts.add(product);
+		}
+		XmlProductMsg xmlProductMsg = new XmlProductMsg(lOfProducts.get(0));
+		int status = addProduct(xmlProductMsg);
+		if (status == 200) {
+			processUserToProduct(lOfProducts.get(0).getProductid(),
+					login.getUserId(), "create");
+		}
+		return new ModelAndView("redirect:myCatalog.html");
+	}
+
+	@RequestMapping("/addNewProduct")
+	public Object addNewProduct(Map<String, Object> model) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("addNewProduct");
+		}
+		XmlLogin login = (XmlLogin) model.get("loggedin");
+		// /if (login == null || login.getUserId() == null) {
+		// return new ModelAndView("redirect:homepage.html");
+		// }
+		ProductForm productForm = new ProductForm();
+		productForm = setUpDummyProductform();
+		productForm.setAction("new");
+		productForm.setCurrentPage("newProduct");
+		model.put("productForm", productForm);
+		return "product";
+	}
+
+	/*******************************************************************************************************************************/
 
 	@RequestMapping(value = "/updateProduct", method = RequestMethod.GET)
 	public String updateProduct(@Valid ProductForm newProductForm,
@@ -387,8 +338,7 @@ public class ProductController {
 	}
 
 	private static URI getBaseURI() {
-		return UriBuilder.fromUri(
-				"http://localhost:8080/sellemws").build();
+		return UriBuilder.fromUri("http://localhost:8080/sellemws").build();
 	}
 
 	private final String getElementValue(Node elem) {
@@ -415,18 +365,18 @@ public class ProductController {
 	private String productLookUp(ProductForm newProductForm,
 			Map<String, Object> model) {
 		if (logger.isDebugEnabled()) {
-			logger.debug("newProductFromISBN");
+			logger.debug("newProductFromISBN " + newProductForm.getProductid());
 		}
 		try {
 			String barcodeFormat = "EAN";
 			Document document = ProductLookUp.getProductsWithImage(
 					newProductForm.getProductid(), barcodeFormat, null, null,
 					"All", "ThumbnailImage");
-			List<Product> lOfProducts = new ArrayList<Product>();
+			List<XmlProduct> lOfProducts = new ArrayList<XmlProduct>();
 			NodeList productList = document.getElementsByTagName("product");
 			for (int i = 0; i < productList.getLength(); i++) {
 				Element element = (Element) productList.item(i);
-				Product product = new Product();
+				XmlProduct product = new XmlProduct();
 				product.setAuthor(getValue(element, KEY_AUTHOR));
 				product.setImageLargeURL(getValue(element, KEY_URL));
 				product.setImageURL(getValue(element, KEY_URL));
@@ -440,7 +390,7 @@ public class ProductController {
 				lOfProducts.add(product);
 			}
 			CatalogForm catalogForm = new CatalogForm();
-			//catalogForm.setmOfProducts(lOfProducts);
+			catalogForm.setmOfProducts(lOfProducts);
 			catalogForm.setShowLinks(false);
 			catalogForm.setHeader("Search Results");
 			catalogForm.setOrigin("productLookUp");
