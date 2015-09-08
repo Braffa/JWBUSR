@@ -137,37 +137,51 @@ public class ProductController {
 		return response.getStatus();
 	}
 
-	@RequestMapping(value = "/saveProduct", method = RequestMethod.POST)
-	public Object saveProduct(@Valid ProductForm newProductForm,
+	@RequestMapping(value = "/lookUpProduct", method = RequestMethod.POST)
+	public Object lookUpProduct(@Valid ProductForm newProductForm,
 			BindingResult result, Map<String, Object> model) {
 		if (logger.isDebugEnabled()) {
 			logger.debug("saveProduct " + newProductForm.getProductid());
 		}
-		if (newProductForm.getAction().equals("ISBN")) {
-			return productLookUp(newProductForm, model);
+		try {
+			String barcodeFormat = "EAN";
+			Document document = ProductLookUp.getProductsWithImage(
+					newProductForm.getProductid(), barcodeFormat, null, null,
+					"All", "ThumbnailImage");
+			List<XmlProduct> lOfProducts = new ArrayList<XmlProduct>();
+			NodeList productList = document.getElementsByTagName("product");
+			for (int i = 0; i < productList.getLength(); i++) {
+				Element element = (Element) productList.item(i);
+				XmlProduct product = new XmlProduct();
+				product.setAuthor(getValue(element, KEY_AUTHOR));
+				product.setImageLargeURL(getValue(element, KEY_URL));
+				product.setImageURL(getValue(element, KEY_URL));
+				product.setProductgroup(getValue(element, KEY_PRODUCT_GROUP));
+				product.setManufacturer(KEY_MANUFACTURER);
+				product.setProductid(getValue(element, KEY_PRODUCT_ID));
+				product.setProductidtype(getValue(element, KEY_PRODUCT_ID_TYPE));
+				product.setSource(getValue(element, KEY_SOURCE));
+				product.setSourceid(getValue(element, KEY_SOURCE_ID));
+				product.setTitle(getValue(element, KEY_SOURCE_TITLE));
+				lOfProducts.add(product);
+			}
+			CatalogForm catalogForm = new CatalogForm();
+			catalogForm.setmOfProducts(lOfProducts);
+			catalogForm.setShowLinks(false);
+			catalogForm.setHeader("Search Results");
+			catalogForm.setOrigin("productLookUp");
+			catalogForm.setCurrentPage("myCatalogue");
+			model.put("catalogForm", catalogForm);
+			return "catalog";
+		} catch (Exception e) {
+			ProductForm productForm = new ProductForm();
+			productForm.setProductidtype("EAN");
+			productForm.setCurrentPage("newProduct");
+			productForm.setAction("new");
+			productForm.setErrorMessage("Cannot connect to internet");
+			model.put("productForm", productForm);
+			return "product";
 		}
-		XmlLogin login = (XmlLogin) model.get("loggedin");
-		XmlProduct xmlProduct = new XmlProduct();
-		xmlProduct.setAuthor(newProductForm.getAuthor());
-		xmlProduct.setImageURL(newProductForm.getImageURL());
-		xmlProduct.setImageLargeURL(newProductForm.getImageLargeURL());
-		xmlProduct.setManufacturer(newProductForm.getManufacturer());
-		xmlProduct.setProductgroup(newProductForm.getProductgroup());
-		xmlProduct.setProductid(newProductForm.getProductid());
-		xmlProduct.setProductIndex(newProductForm.getProductIndex());
-		xmlProduct.setProductidtype(newProductForm.getProductidtype());
-		xmlProduct.setSource(newProductForm.getSource());
-		xmlProduct.setSource(newProductForm.getSourceid());
-		xmlProduct.setTitle(newProductForm.getTitle());
-		xmlProduct.setUserId(login.getUserId());
-		xmlProduct.setAction(newProductForm.getAction());
-		XmlProductMsg xmlProductMsg = new XmlProductMsg(xmlProduct);
-		int status = addProduct(xmlProductMsg);
-		if (status == 200) {
-			processUserToProduct(newProductForm.getProductid(),
-					login.getUserId(), "create");
-		}
-		return new ModelAndView("redirect:myCatalog.html");
 	}
 
 	@RequestMapping(value = "/addExistingProduct", method = RequestMethod.GET)
@@ -292,52 +306,13 @@ public class ProductController {
 			logger.debug("addNewProduct");
 		}
 		XmlLogin login = (XmlLogin) model.get("loggedin");
-		// /if (login == null || login.getUserId() == null) {
-		// return new ModelAndView("redirect:homepage.html");
-		// }
-		ProductForm productForm = new ProductForm();
-		productForm = setUpDummyProductform();
-		productForm.setAction("new");
-		productForm.setCurrentPage("newProduct");
-		model.put("productForm", productForm);
-		return "product";
-	}
-
-	/*******************************************************************************************************************************/
-
-	@RequestMapping(value = "/updateProduct", method = RequestMethod.GET)
-	public String updateProduct(@Valid ProductForm newProductForm,
-			@RequestParam String productid, BindingResult result,
-			Map<String, Object> model) {
-		if (logger.isDebugEnabled()) {
-			logger.debug(productid);
+		if (login == null || login.getUserId() == null) {
+		 return new ModelAndView("redirect:homepage.html");
 		}
-		ClientConfig config = new DefaultClientConfig();
-		Client client = Client.create(config);
-		WebResource service = client.resource(getBaseURI());
-
-		String xml = service.path("rest").path("catalog").path(productid)
-				.path("productFullId").accept(MediaType.APPLICATION_XML)
-				.get(String.class);
-
-		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		Catalog catalog = convertXMLToObject.catalogXMLFileToObjects();
-
-		List<Product> lOfProducts = catalog.getProducts().getlOfProducts();
-		Product product = lOfProducts.get(0);
 		ProductForm productForm = new ProductForm();
-		productForm.setAuthor(product.getAuthor());
-		productForm.setImageLargeURL(product.getImageLargeURL());
-		productForm.setImageURL(product.getImageURL());
-		productForm.setManufacturer(product.getManufacturer());
-		productForm.setProductgroup(product.getProductgroup());
-		productForm.setProductid(product.getProductid());
-		productForm.setProductidtype(product.getProductidtype());
-		productForm.setProductIndex(product.getProductIndex());
-		productForm.setSource(product.getSource());
-		productForm.setSourceid(product.getSourceid());
-		productForm.setTitle(product.getTitle());
-		productForm.setAction("update");
+		productForm.setProductidtype("EAN");
+		productForm.setCurrentPage("newProduct");
+		productForm.setAction("new");
 		productForm.setCurrentPage("newProduct");
 		model.put("productForm", productForm);
 		return "product";
@@ -368,67 +343,4 @@ public class ProductController {
 		return value;
 	}
 
-	private String productLookUp(ProductForm newProductForm,
-			Map<String, Object> model) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("newProductFromISBN " + newProductForm.getProductid());
-		}
-		try {
-			String barcodeFormat = "EAN";
-			Document document = ProductLookUp.getProductsWithImage(
-					newProductForm.getProductid(), barcodeFormat, null, null,
-					"All", "ThumbnailImage");
-			List<XmlProduct> lOfProducts = new ArrayList<XmlProduct>();
-			NodeList productList = document.getElementsByTagName("product");
-			for (int i = 0; i < productList.getLength(); i++) {
-				Element element = (Element) productList.item(i);
-				XmlProduct product = new XmlProduct();
-				product.setAuthor(getValue(element, KEY_AUTHOR));
-				product.setImageLargeURL(getValue(element, KEY_URL));
-				product.setImageURL(getValue(element, KEY_URL));
-				product.setProductgroup(getValue(element, KEY_PRODUCT_GROUP));
-				product.setManufacturer(KEY_MANUFACTURER);
-				product.setProductid(getValue(element, KEY_PRODUCT_ID));
-				product.setProductidtype(getValue(element, KEY_PRODUCT_ID_TYPE));
-				product.setSource(getValue(element, KEY_SOURCE));
-				product.setSourceid(getValue(element, KEY_SOURCE_ID));
-				product.setTitle(getValue(element, KEY_SOURCE_TITLE));
-				lOfProducts.add(product);
-			}
-			CatalogForm catalogForm = new CatalogForm();
-			catalogForm.setmOfProducts(lOfProducts);
-			catalogForm.setShowLinks(false);
-			catalogForm.setHeader("Search Results");
-			catalogForm.setOrigin("productLookUp");
-			catalogForm.setCurrentPage("myCatalogue");
-			model.put("catalogForm", catalogForm);
-			return "catalog";
-		} catch (Exception e) {
-			ProductForm productForm = new ProductForm();
-			productForm = setUpDummyProductform();
-			productForm.setAction("new");
-			productForm.setCurrentPage("newProduct");
-			productForm.setErrorMessage("Cannot connect to internet");
-			model.put("productForm", productForm);
-			return "product";
-		}
-	}
-
-	private ProductForm setUpDummyProductform() {
-		ProductForm productForm = new ProductForm();
-		productForm.setAuthor("Dave Brayfield");
-		productForm
-				.setImageLargeURL("http://ecx.images-amazon.com/images/I/41hdqEVaWML._SL75_.jpg");
-		productForm.setImageURL("http:\\www.bbc.com");
-		productForm.setManufacturer("Braffa Ltd");
-		productForm.setProductgroup("Book");
-		productForm.setProductid("123456789");
-		productForm.setProductidtype("ION");
-		productForm.setProductIndex("0");
-		productForm.setSource("Braff");
-		productForm.setSourceid("123456");
-		productForm.setTitle("I want the best of both worlds");
-		productForm.setCurrentPage("newProduct");
-		return productForm;
-	}
 }
