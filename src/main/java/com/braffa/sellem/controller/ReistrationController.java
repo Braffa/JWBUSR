@@ -22,6 +22,7 @@ import org.springframework.web.servlet.ModelAndView;
 import com.braffa.sellem.form.RegisterForm;
 import com.braffa.sellem.form.RegistrationForm;
 import com.braffa.sellem.model.xml.authentication.XmlLogin;
+import com.braffa.sellem.model.xml.authentication.XmlLoginMsg;
 import com.braffa.sellem.model.xml.authentication.XmlRegisteredUser;
 import com.braffa.sellem.model.xml.authentication.XmlRegisteredUserMsg;
 import com.braffa.sellem.model.xml.webserviceobjects.authentication.Login;
@@ -67,22 +68,24 @@ public class ReistrationController {
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
 
-		String xml = service.path("rest").path("registeredusers")
-				.path(registeredDetails.getUserId())
-				.accept(MediaType.APPLICATION_XML).get(String.class);
+		String xmlStr = service.path("rest").path("login").path("find")
+				.path(registeredDetails.getUserId()).accept(MediaType.TEXT_XML)
+				.get(String.class);
 
-		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		RegisteredUser registeredUser = convertXMLToObject
-				.registeredUserXMLFileToObjects();
-
-		// does user id already exist
-		if (registeredUser.getLogin() != null
-				&& registeredUser.getLogin().getUserId()
-						.equalsIgnoreCase(registeredDetails.getUserId())) {
-			result.addError(new FieldError("registeredDetails", "userId",
-					"Invalid userName" + " ( " + registeredDetails.getUserId()
-							+ " already exists" + " )"));
-			return "register";
+		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xmlStr);
+		XmlLoginMsg loginMsg = convertXMLToObject.xmlloginMsgToObjects();
+		if (loginMsg.getSuccess().equals("true")) {
+			XmlLogin login = loginMsg.getLOfLogins().get(0);
+			// does user id already exist
+			if (login != null
+					&& login.getUserId().equalsIgnoreCase(
+							registeredDetails.getUserId())) {
+				result.addError(new FieldError("registeredDetails", "userId",
+						"Invalid userName" + " ( "
+								+ registeredDetails.getUserId()
+								+ " already exists" + " )"));
+				return "register";
+			}
 		}
 		// is email valid
 		if (!validateEmailAddress(registeredDetails.getEmail())) {
@@ -92,23 +95,29 @@ public class ReistrationController {
 			return "register";
 		}
 
-		Login login = new Login("-99", registeredDetails.getPassword(),
-				registeredDetails.getUserId());
+		XmlLogin xmllogin = new XmlLogin("-99",
+				registeredDetails.getPassword(), registeredDetails.getUserId());
 
-		registeredUser = new RegisteredUser(registeredDetails.getEmail(),
-				registeredDetails.getFirstname(),
-				registeredDetails.getLastname(),
-				registeredDetails.getTelephone(), login);
+		XmlRegisteredUser xmlRegisteredUser = new XmlRegisteredUser();
+		xmlRegisteredUser.setEmail(registeredDetails.getEmail());
+		xmlRegisteredUser.setFirstname(registeredDetails.getFirstname());
+		xmlRegisteredUser.setLastname(registeredDetails.getLastname());
+		xmlRegisteredUser.setLogin(xmllogin);
+		xmlRegisteredUser.setTelephone(registeredDetails.getTelephone());
+		XmlRegisteredUserMsg XmlRegisteredUserMsg = new XmlRegisteredUserMsg(
+				xmlRegisteredUser);
 
-		ClientResponse response = service.path("rest").path("registeredusers")
-				.path(registeredUser.getLogin().getUserId())
-				.accept(MediaType.APPLICATION_XML)
-				.put(ClientResponse.class, registeredUser);
+		service = client.resource(getBaseURI());
+		WebResource createService = service.path("rest")
+				.path("registeredusers").path("create");
+		ClientResponse response = createService.accept(
+				MediaType.APPLICATION_XML).post(ClientResponse.class,
+				XmlRegisteredUserMsg);
 
 		if (logger.isDebugEnabled()) {
 			logger.debug(response.getStatus());
 		}
-		return "redirect:login.html";
+		return "redirect:homepage.html";
 	}
 
 	@RequestMapping(value = "/showRegisteredUsers")
@@ -116,7 +125,7 @@ public class ReistrationController {
 		if (logger.isDebugEnabled()) {
 			logger.debug("showRegisteredUsers");
 		}
-		XmlLogin login = (XmlLogin)model.get("loggedin");
+		XmlLogin login = (XmlLogin) model.get("loggedin");
 		if (login == null || login.getUserId() == null) {
 			return new ModelAndView("redirect:homepage.html");
 		}
@@ -124,9 +133,9 @@ public class ReistrationController {
 		Client client = Client.create(config);
 		WebResource service = client.resource(getBaseURI());
 
-		String xml = service.path("rest").path("registeredusers").path("findall")
-				.accept(MediaType.TEXT_XML).get(String.class);
-		
+		String xml = service.path("rest").path("registeredusers")
+				.path("findall").accept(MediaType.TEXT_XML).get(String.class);
+
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
 		XmlRegisteredUserMsg registeredUserMsg = convertXMLToObject
 				.xmlRegisteredUserMsgToObjects();
@@ -150,8 +159,7 @@ public class ReistrationController {
 	}
 
 	private static URI getBaseURI() {
-		return UriBuilder.fromUri(
-				"http://localhost:8080/sellemws").build();
+		return UriBuilder.fromUri("http://localhost:8080/sellemws").build();
 	}
 
 	private boolean validateEmailAddress(String email) {

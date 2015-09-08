@@ -104,16 +104,8 @@ public class HomePageController {
 				.path(loginForm.getUserName())
 				.accept(MediaType.TEXT_XML).get(String.class);
 		
-		System.out.println("dave - " + xml);
-		
-		//String xml = service.path("rest").path("login")
-		//		.path(loginForm.getUserName())
-		//		.accept(MediaType.APPLICATION_XML).get(String.class);
-
 		ConvertXMLToObject convertXMLToObject = new ConvertXMLToObject(xml);
-		System.out.println("Dave 1");
 		XmlLoginMsg loginMsg = convertXMLToObject.xmlloginMsgToObjects();
-		System.out.println("Dave 2");
 		XmlLogin login = loginMsg.getLOfLogins().get(0);
 
 		ModelAndView mv = new ModelAndView("redirect:homepage.html");

@@ -215,23 +215,29 @@ public class ProductController {
 
 		XmlProduct product = xmlUsersProductMsg.getProduct();
 
-		List<XmlUsersLinkedToProduct> lOfXmlUsersLinkedToProduct = xmlUsersProductMsg
-				.getlOfXmlUsersLinkedToProduct();
-
 		WhoHasThisForm whoHasThisForm = new WhoHasThisForm();
-		List<RegisteredUserToProduct> lOfRegisteredUserToProduct = new ArrayList<RegisteredUserToProduct>();
-		for (XmlUsersLinkedToProduct usersLinkedToProduct : lOfXmlUsersLinkedToProduct) {
-			RegisteredUserToProduct registeredUserToProduct = new RegisteredUserToProduct();
-			registeredUserToProduct.setCrDate(usersLinkedToProduct
-					.getAddedDate());
-			registeredUserToProduct.setEmail(usersLinkedToProduct.getEmail());
-			registeredUserToProduct.setUserId(usersLinkedToProduct.getUserId());
-			registeredUserToProduct.setProductId(product.getProductid());
-			registeredUserToProduct.setProductIndex("0");
-			lOfRegisteredUserToProduct.add(registeredUserToProduct);
+		if (xmlUsersProductMsg.getSuccess().equals("true")) {
+			List<XmlUsersLinkedToProduct> lOfXmlUsersLinkedToProduct = xmlUsersProductMsg
+					.getlOfXmlUsersLinkedToProduct();
+			if (lOfXmlUsersLinkedToProduct.size() > 0) {
+				List<RegisteredUserToProduct> lOfRegisteredUserToProduct = new ArrayList<RegisteredUserToProduct>();
+				for (XmlUsersLinkedToProduct usersLinkedToProduct : lOfXmlUsersLinkedToProduct) {
+					RegisteredUserToProduct registeredUserToProduct = new RegisteredUserToProduct();
+					registeredUserToProduct.setCrDate(usersLinkedToProduct
+							.getAddedDate());
+					registeredUserToProduct.setEmail(usersLinkedToProduct
+							.getEmail());
+					registeredUserToProduct.setUserId(usersLinkedToProduct
+							.getUserId());
+					registeredUserToProduct
+							.setProductId(product.getProductid());
+					registeredUserToProduct.setProductIndex("0");
+					lOfRegisteredUserToProduct.add(registeredUserToProduct);
+				}
+				whoHasThisForm
+						.setlOfRegisteredUserToProduct(lOfRegisteredUserToProduct);
+			}
 		}
-		whoHasThisForm
-				.setlOfRegisteredUserToProduct(lOfRegisteredUserToProduct);
 		whoHasThisForm.setProduct(product);
 		whoHasThisForm.setShowLinks(false);
 		whoHasThisForm.setHeader("Who Has This");
